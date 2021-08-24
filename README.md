@@ -24,7 +24,43 @@ But, the question is that:
 
 4. if accept stop action, clear resources.
 
+
+
 <img src="https://tva1.sinaimg.cn/large/008i3skNly1gtqkjxyudqj60ce0djwez02.jpg" alt="polling-manager-design" style="zoom:67%;" />
 
 
-#### Design
+
+#### API
+
+#### usePollingManager（options）
+
+| 参数           | 说明                   | 类型                | 默认值     |
+| -------------- | ---------------------- | ------------------- | ---------- |
+| pollingFetcher | 轮训请求               | (params) => promise | null       |
+| getParams      | 轮训请求参数           | object              | null       |
+| key            | 轮训任务唯一标识       | string              | 'id'       |
+| interval       | 轮训请求间隔           | number              | 500ms      |
+| doneCondition  | 轮训任务完成回调       | function(res)       | () => true |
+| tryLimit       | 轮训请求失败，重试次数 | number              | 3          |
+
+##### usage
+
+```javascript
+const { addTask, notify, clear } = usePollingManager({
+  pollingFetcher: fetchPollingStatus,
+  getParams: (task) => ({
+    id: task.id
+  }),
+  doneCondition: (res) => res.progress === 100 || res.progress === -1,
+})
+
+// 添加需要轮训的任务
+addTask(...tasks)
+
+// 轮训结果通知
+notify((task, res) => {
+  const { id: taskId } = task
+  // do sth
+})
+```
+
