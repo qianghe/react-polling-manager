@@ -1,4 +1,5 @@
-import { useRef, useCallback } from "react"
+import { useRef, useCallback } from 'react'
+import useRetryStrategy from './useRetryStrategy'
 
 function usePollingManager(options) {
 	const {
@@ -7,18 +8,31 @@ function usePollingManager(options) {
 		key = 'id',
 		interval = 500,
 		doneCondition = () => true,
-		tryLimit = 3,
+		retryLimit = 3,
+		retryWaitMillionSeconds = 500
 	} = options
 	const manager = useRef({})
 	const cbs = useRef([])
-	
+	const { retry } = useRetryStrategy({ 
+		retryLimit,
+		retryWaitMillionSeconds
+	})
+
 	const clearTask = useCallback((task) => {
-		const fieldKey = task[key]
-		if (manager.current[fieldKey]) {
-			const timer = manager.current[fieldKey]
+		const fieldVal = task[key]
+		if (manager.current[fieldVal]) {
+			const timer = manager.current[fieldVal]
 			clearInterval(timer)
 			
-			delete manager.current[fieldKey]
+			delete manager.current[fieldVal]
+		}
+	}, [])
+
+	const notifySubscribers = useCallback((...args) => {
+		if (cbs.current.length > 0) {
+			for (let i = 0; i < cbs.current.length; i++) {
+				cbs.current[i](...args)
+			}
 		}
 	}, [])
 
@@ -31,14 +45,25 @@ function usePollingManager(options) {
 				...(getParams(task) || {}),
 				progress: res.progress || 0, // mock params
 			}
-			
-			res = await pollingFetcher(...params ? [params] : [])
-			
-			if (cbs.current.length > 0) {
-				for (let i = 0; i < cbs.current.length; i++) {
-					cbs.current[i](task, res)
+			try {
+				res = await pollingFetcher(...params ? [params] : [])
+			} catch(e) {
+				let isEnd = true
+				
+				if (retryLimit) {
+					isEnd = retry(task[key], () => {
+						manager.current[task[key]] = startPolling(task)
+					})
 				}
+				isEnd && notifySubscribers(task, null, true)
+
+				clearTask(task)
+				
+				return
 			}
+
+			notifySubscribers(task, res, false)
+			
 			if (doneCondition(res)) {
 				clearTask(task)
 			}
@@ -50,8 +75,8 @@ function usePollingManager(options) {
 
 		return timer
 	}, [])
-	
-	const addTask = useCallback((...tasks) => {
+
+	const addTasks = useCallback((...tasks) => {
 		const taskMap = {}
 
 		for (let i = 0; i < tasks.length; i++) {
@@ -75,7 +100,7 @@ function usePollingManager(options) {
 	}, [])
 
 	return {
-		addTask,
+		addTasks,
 		notify,
 		clear
 	}

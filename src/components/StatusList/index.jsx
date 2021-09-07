@@ -14,7 +14,7 @@ function StatusList() {
     pageSize: 10,
     total: 0
   })
-  const { addTask, notify, clear } = usePollingManager({
+  const { addTasks, notify, clear } = usePollingManager({
     pollingFetcher: fetchPollingStatus,
 		getParams: (task) => ({
       id: task.id
@@ -37,12 +37,16 @@ function StatusList() {
       const makingItems = pageItems.filter(({ status }) => status === 'making')
       
       if (makingItems.length > 0) {
-        addTask(...makingItems)
-        notify((task, res) => {
+        addTasks(...makingItems)
+        notify((task, res, hasError) => {
           const { id: taskId } = task
           const pageTaskItem = pageItems.find(({ id }) => id === taskId)
           if (pageTaskItem) {
-            pageTaskItem.progress = res.progress || 1
+            if (hasError) {
+              pageTaskItem.status = 'fail'
+            } else {
+              pageTaskItem.progress = res.progress || 1
+            }
             setItems([...pageItems])
           }
         })
