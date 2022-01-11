@@ -46,7 +46,7 @@ But, the question is that:
 ##### usage
 
 ```javascript
-const { addTask, notify, clear } = usePollingManager({
+const { addTask, notify, clearTask, clear } = usePollingManager({
   pollingFetcher: fetchPollingStatus,
   getParams: (task) => ({
     id: task.id

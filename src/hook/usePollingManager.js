@@ -101,6 +101,7 @@ function usePollingManager(options) {
 
 	return {
 		addTasks,
+		clearTask,
 		notify,
 		clear
 	}
